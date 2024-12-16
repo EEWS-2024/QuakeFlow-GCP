@@ -148,6 +148,12 @@ def associate(
         mask = (timestamp >= t00[i]) & (timestamp <= t11[i])
         events.loc[mask, "event_index"] = i
     events["num_picks"] = events.groupby("event_index").size()
+    ## logPGV = -4.75 + 1.68 * logR + 0.93M => M = (logPGV - 4.175 - 1.68 * logR) / 0.93
+    events["magnitude"] = (
+        np.log10(events["event_amplitude"])
+        + 4.175
+        + 1.68 * np.log10(events["travel_time"] * VP * (VPVS_RATIO + 1.0) / 2.0)
+    ) / 0.93
 
     # # refine event index using DBSCAN
     # events["group_index"] = -1
@@ -172,18 +178,22 @@ def associate(
         # (ts - tp) = (ps_ratio - 1) tp = tt * 2 * (ps_ratio - 1) / (ps_ratio + 1)
 
         event = event.sort_values(by="num_picks", ascending=True)
-        ps_delta = event["travel_time_s"].values * 2 * (VPVS_RATIO - 1) / (VPVS_RATIO + 1)
-        t1 = event["timestamp_center"].values - ps_delta * 1.2
-        t2 = event["timestamp_center"].values + ps_delta * 1.2
+        ps_delta = event["travel_time"].values * 2 * (VPVS_RATIO - 1) / (VPVS_RATIO + 1)
+        # t1 = event["timestamp_center"].values - ps_delta * 1.1 - 1.0
+        # t2 = event["timestamp_center"].values + ps_delta * 1.1 + 1.0
+        t1 = event["timestamp_center"].values - (ps_delta * 0.6 + 1.0)
+        t2 = event["timestamp_center"].values + (ps_delta * 0.6 + 1.0)
 
         picks_ = picks.loc[group_id, "timestamp"].values  # (Npk, )
         mask = (picks_[None, :] >= t1[:, None]) & (picks_[None, :] <= t2[:, None])  # (Nev, Npk)
         # picks.loc[group_id, "event_index"] = np.where(
         #     mask.any(axis=0), index.values[mask.argmax(axis=0)], picks.loc[group_id, "event_index"]
         # )
-        picks.loc[group_id, "event_index"] = np.where(
-            mask.any(axis=0), event["event_index"].values[mask.argmax(axis=0)], -1
-        )
+        mask_true = mask.any(axis=0)
+        mask_idx = mask.argmax(axis=0)
+        picks.loc[group_id, "event_index"] = np.where(mask_true, event["event_index"].values[mask_idx], -1)
+        picks.loc[group_id, "sp_ratio"] = np.where(mask_true, event["sp_ratio"].values[mask_idx], np.nan)
+        picks.loc[group_id, "event_amplitude"] = np.where(mask_true, event["event_amplitude"].values[mask_idx], np.nan)
 
     picks.reset_index(inplace=True)
 
@@ -210,6 +220,7 @@ def associate(
                 "event_score": "sum",
                 "latitude": "median",
                 "longitude": "median",
+                "magnitude": "median",
             }
         )
         .reset_index()
