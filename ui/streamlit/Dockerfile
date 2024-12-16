@@ -1,20 +1,19 @@
-FROM continuumio/miniconda3
+FROM python:3.7
 
 WORKDIR /app
 
-# Create the environment:
-COPY env.yml /app
-RUN conda env create --name cs329s --file=env.yml
-# Make RUN commands use the new environment:
-SHELL ["conda", "run", "-n", "cs329s", "/bin/bash", "-c"]
+# Copy and install dependencies
+COPY requirements.txt /app
+RUN pip install -r requirements.txt
 
-# Copy files
+# Copy all application files
 COPY . /app
 
 # Expose API port
-EXPOSE 8501
+EXPOSE 8005
 
+# Set environment variable for unbuffered logging
 ENV PYTHONUNBUFFERED=1
 
-# Start API server
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "cs329s", "streamlit", "run", "ui_streamlit_iris.py"]
+# Start API server with Gunicorn
+ENTRYPOINT ["gunicorn", "app_plotly:server", "--reload", "-b", "0.0.0.0:8005"]

@@ -7,10 +7,10 @@ git submodule update --init --recursive
 # Build all docker images
 cd ../PhaseNet; docker build --tag phasenet-api:1.0 . ; cd ../kubernetes;
 cd ../GaMMA; docker build --tag gamma-api:1.0 . ; cd ../kubernetes;
-cd ../DeepDenoiser; docker build --tag deepdenoiser-api:1.0 . ; cd ../kubernetes;
+cd ../DeepDenoiser; docker build -t deepdenoiser-api:1.0 . ; cd ../kubernetes;
 cd ../spark; docker build --tag quakeflow-spark:1.0 .; cd ../kubernetes;
-cd ../waveform; docker build --tag quakeflow-waveform:1.0 .; cd ../kubernetes;
-cd ../streamlit; docker build --tag quakeflow-streamlit:1.0 .; cd ../kubernetes;
+# cd ../kubeflow/waveform; docker build --tag quakeflow-waveform:1.0 .; cd ../kubernetes;
+cd ../ui; docker build --tag quakeflow-ui:1.0 .; cd ../kubernetes;
 
 # Deploy Kafka with Helm, create client and add topics
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -34,7 +34,8 @@ kubectl apply -f quakeflow-local.yaml
 
 # Add autoscaling
 kubectl autoscale deployment phasenet-api --cpu-percent=80 --min=1 --max=10
-kubectl autoscale deployment gmma-api --cpu-percent=80 --min=1 --max=10
+kubectl autoscale deployment gamma-api --cpu-percent=80 --min=1 --max=10
+kubectl autoscale deployment deepdenoiser-api --cpu-percent=80 --min=1 --max=10
 
 # Expose APIs
 # kubectl expose deployment phasenet-api --type=LoadBalancer --name=phasenet-service
@@ -43,8 +44,8 @@ kubectl autoscale deployment gmma-api --cpu-percent=80 --min=1 --max=10
 # kubectl expose deployment quakeflow-ui --type=LoadBalancer --name=quakeflow-ui
 
 # Port forward
-while true; do kubectl port-forward svc/phasenet-api 8001:8001 --address='0.0.0.0'; done & \
-while true; do kubectl port-forward svc/gamma-api 8002:8002 --address='0.0.0.0'; done  & \
-while true; do kubectl port-forward svc/deepdenoiser-api 8003:8003 --address='0.0.0.0'; done  & \
-while true; do kubeflow port-forward svc/ml-pipeline-ui 8080:80 --address='0.0.0.0'; done  &
-# while true; do kubeflow port-forward svc/ml-pipeline-ui 8080:80 --address='0.0.0.0'; done  &
+kubectl port-forward svc/phasenet-api 8001:8001 --address='0.0.0.0' &
+kubectl port-forward svc/gamma-api 8002:8002 --address='0.0.0.0' &
+kubectl port-forward svc/deepdenoiser-api 8003:8003 --address='0.0.0.0' &
+# kubectl port-forward svc/quakeflow-ui 8005:8005 --address='0.0.0.0' &
+kubectl port-forward -n kubeflow svc/ml-pipeline-ui 8080:80 --address='0.0.0.0' &

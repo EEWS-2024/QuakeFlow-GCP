@@ -1,0 +1,17 @@
+# Non-pip dependencies
+matplotlib
+numpy
+scikit-learn
+pandas
+tensorflow
+
+# Pip dependencies
+kafka-python
+tweepy
+plotly
+plotly-express
+dash
+Pillow
+geopy
+kaleido
+gunicorn
